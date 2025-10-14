@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Mono3D")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+11b25e521c5117d3a30bcac01d63ee87bdf0a6f5")]
 [assembly: System.Reflection.AssemblyProductAttribute("Mono3D")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Mono3D")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

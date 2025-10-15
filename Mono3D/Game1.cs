@@ -135,8 +135,18 @@ public class Game1 : Game
             Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
 
-        _angle += 0.05f;
+        KeyboardState keyState = Keyboard.GetState();
+        if (keyState.IsKeyDown(Keys.Q))
+        {
+            _angle += 0.05f;
+        }
+        if (keyState.IsKeyDown(Keys.E))
+        {
+            _angle -= 0.05f;
+        }
 
+        
+        
         base.Update(gameTime);
     }
 
@@ -160,7 +170,7 @@ public class Game1 : Game
         // Matrix worldMatrix = Matrix.CreateTranslation(-20.0f/3.0f, -10.0f / 3.0f, 0) * Matrix.CreateRotationY(_angle);
         Vector3 rotAxis = new Vector3(3*_angle, _angle, 2*_angle);
         rotAxis.Normalize();
-        Matrix worldMatrix = Matrix.Identity;
+        Matrix worldMatrix = Matrix.CreateTranslation(-_terrainWidth / 2.0f, 0, _terrainHeight / 2.0f) * Matrix.CreateRotationY(_angle);
         _effect.Parameters["xWorld"].SetValue(worldMatrix);
         foreach (EffectPass pass in _effect.CurrentTechnique.Passes)
         {

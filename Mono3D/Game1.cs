@@ -5,34 +5,38 @@ using Microsoft.Xna.Framework.Input;
 namespace Mono3D;
 
 
-public struct VertexPositionColorNormal
-{
-    public Vector3 Position;
-    public Color Color;
-    public Vector3 Normal;
 
-    public readonly static VertexDeclaration VertexDeclaration = new VertexDeclaration
-    (
-        new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
-        new VertexElement(sizeof(float) * 3, VertexElementFormat.Color, VertexElementUsage.Color, 0),
-        new VertexElement(sizeof(float) * 3 + 4, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0)
-    );
-}
 public class Game1 : Game
 {
+    public struct VertexPositionColorNormal
+    {
+        public Vector3 Position;
+        public Color Color;
+        public Vector3 Normal;
+
+        public readonly static VertexDeclaration VertexDeclaration = new VertexDeclaration
+        (
+            new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
+            new VertexElement(sizeof(float) * 3, VertexElementFormat.Color, VertexElementUsage.Color, 0),
+            new VertexElement(sizeof(float) * 3 + 4, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0)
+        );
+    }
+    
     // Properties
     private GraphicsDeviceManager _graphics;
     private GraphicsDevice _device;
     private Effect _effect;
     private VertexPositionColorNormal[] _vertices;
-    private int[] _indices;
+    private short[] _indices;
     private Matrix _viewMatrix;
     private Matrix _projectionMatrix;
     private float _angle = 0f;
     private int _terrainWidth = 4;
     private int _terrainHeight = 3;
     private float[,] _heightData;
-
+    private VertexBuffer _myVertexBuffer;
+    private IndexBuffer _myIndexBuffer;
+    
     // Toggles
     private bool _isEnableWireFrame = false;
     private bool _isEnableLighting = true;
@@ -100,16 +104,16 @@ public class Game1 : Game
 
     private void SetUpIndices()
     {
-        _indices = new int[(_terrainWidth - 1) * (_terrainHeight - 1) * 6];
+        _indices = new short[(_terrainWidth - 1) * (_terrainHeight - 1) * 6];
         int counter = 0;
-        for (int y = 0; y < _terrainHeight - 1; y++)
+        for (short y = 0; y < _terrainHeight - 1; y++)
         {
-            for (int x = 0; x < _terrainWidth - 1; x++)
+            for (short x = 0; x < _terrainWidth - 1; x++)
             {
-                int lowerLeft = x + y * _terrainWidth;
-                int lowerRight = (x + 1) + y * _terrainWidth;
-                int topLeft = x + (y + 1) * _terrainWidth;
-                int topRight = (x + 1) + (y + 1) * _terrainWidth;
+                short lowerLeft = (short)(x + y * _terrainWidth);
+                short lowerRight = (short) ((x + 1) + y * _terrainWidth);
+                short topLeft = (short)(x + (y + 1) * _terrainWidth);
+                short topRight = (short)((x + 1) + (y + 1) * _terrainWidth);
 
                 _indices[counter++] = topLeft;
                 _indices[counter++] = lowerRight;
@@ -121,6 +125,15 @@ public class Game1 : Game
             }
         }
     }    
+    
+    private void CopyToBuffers()
+    {
+        _myVertexBuffer = new VertexBuffer(_device, VertexPositionColorNormal.VertexDeclaration, _vertices.Length, BufferUsage.WriteOnly);
+        _myVertexBuffer.SetData(_vertices);
+
+        _myIndexBuffer = new IndexBuffer(_device, typeof(short), _indices.Length, BufferUsage.WriteOnly);
+        _myIndexBuffer.SetData(_indices);
+    }
     
     private void SetUpCamera()
     {
@@ -161,6 +174,8 @@ public class Game1 : Game
         // _heightData[2, 2] = 0.8f;
         // _heightData[3, 2] = 0;
     }
+
+
     
     protected override void LoadContent()
     {
@@ -174,6 +189,7 @@ public class Game1 : Game
         SetUpVertices();
         SetUpIndices();
         CalculateNormals();
+        CopyToBuffers();
     }
 
 
@@ -246,14 +262,15 @@ public class Game1 : Game
         _device.Clear(ClearOptions.Target|ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
 
 
+        Matrix worldMatrix = Matrix.CreateTranslation(-_terrainWidth / 2.0f, 0, _terrainHeight / 2.0f) * Matrix.CreateRotationY(_angle);
         _effect.CurrentTechnique = _effect.Techniques["Colored"];
         _effect.Parameters["xView"].SetValue(_viewMatrix);
         _effect.Parameters["xProjection"].SetValue(_projectionMatrix);
+        _effect.Parameters["xWorld"].SetValue(worldMatrix);
         // Matrix worldMatrix = Matrix.CreateRotationY(3 * _angle);
         // Matrix worldMatrix = Matrix.CreateTranslation(-20.0f/3.0f, -10.0f / 3.0f, 0) * Matrix.CreateRotationY(_angle);
         Vector3 rotAxis = new Vector3(3*_angle, _angle, 2*_angle);
         rotAxis.Normalize();
-        Matrix worldMatrix = Matrix.CreateTranslation(-_terrainWidth / 2.0f, 0, _terrainHeight / 2.0f) * Matrix.CreateRotationY(_angle);
 
         Vector3 lightDirection = new Vector3(1.0f, -1.0f, -1.0f);
         lightDirection.Normalize();
@@ -262,11 +279,14 @@ public class Game1 : Game
         _effect.Parameters["xEnableLighting"].SetValue(true);
 
 
-        _effect.Parameters["xWorld"].SetValue(worldMatrix);
         foreach (EffectPass pass in _effect.CurrentTechnique.Passes)
         {
             pass.Apply();
-            _device.DrawUserIndexedPrimitives(PrimitiveType.TriangleList, _vertices, 0, _vertices.Length, _indices, 0, _indices.Length / 3, VertexPositionColorNormal.VertexDeclaration);
+            // _device.DrawUserIndexedPrimitives(PrimitiveType.TriangleList, _vertices, 0, _vertices.Length, _indices, 0, _indices.Length / 3, VertexPositionColorNormal.VertexDeclaration);
+            _device.Indices = _myIndexBuffer;
+            _device.SetVertexBuffer(_myVertexBuffer);
+            _device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, _vertices.Length, 0, _indices.Length / 3);
+
         }
 
         base.Draw(gameTime);

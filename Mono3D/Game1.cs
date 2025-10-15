@@ -18,6 +18,7 @@ public class Game1 : Game
     private int _terrainWidth = 4;
     private int _terrainHeight = 3;
     private float[,] _heightData;
+    private bool _wireFrame = false;
 
     public Game1()
     {
@@ -39,13 +40,43 @@ public class Game1 : Game
 
     private void SetUpVertices()
     {
+        float minHeight = float.MaxValue;
+        float maxHeight = float.MinValue;
+        for (int x = 0; x < _terrainWidth; x++)
+        {
+            for (int y = 0; y < _terrainHeight; y++)
+            {
+                if (_heightData[x, y] < minHeight)
+                    minHeight = _heightData[x, y];
+                if (_heightData[x, y] > maxHeight)
+                    maxHeight = _heightData[x, y];
+            }
+        }
+        
         _vertices = new VertexPositionColor[_terrainWidth * _terrainHeight];
         for (int x = 0; x < _terrainWidth; x++)
         {
             for (int y = 0; y < _terrainHeight; y++)
             {
                 _vertices[x + y * _terrainWidth].Position = new Vector3(x, _heightData[x,y], -y);
-                _vertices[x + y * _terrainWidth].Color = Color.White;
+                _vertices[x + y * _terrainWidth].Position = new Vector3(x, _heightData[x, y], -y);
+
+                if (_heightData[x, y] < minHeight + (maxHeight - minHeight) / 4)
+                {
+                    _vertices[x + y * _terrainWidth].Color = Color.Blue;
+                }
+                else if (_heightData[x, y] < minHeight + (maxHeight - minHeight) * 2 / 4)
+                {
+                    _vertices[x + y * _terrainWidth].Color = Color.Green;
+                }
+                else if (_heightData[x, y] < minHeight + (maxHeight - minHeight) * 3 / 4)
+                {
+                    _vertices[x + y * _terrainWidth].Color = Color.Brown;
+                }
+                else
+                {
+                    _vertices[x + y * _terrainWidth].Color = Color.White;
+                }
             }
         }
     }
@@ -76,7 +107,7 @@ public class Game1 : Game
     
     private void SetUpCamera()
     {
-        _viewMatrix = Matrix.CreateLookAt(new Vector3(120, 80, -160), new Vector3(0, 0, 0), new Vector3(0, 1, 0));
+        _viewMatrix = Matrix.CreateLookAt(new Vector3(60, 80, -80), new Vector3(0, 0, 0), new Vector3(0, 1, 0));
         _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1.0f, 300.0f);
     }    
     
@@ -128,7 +159,7 @@ public class Game1 : Game
     }
 
 
-    
+    KeyboardState previousKeyboardState = Keyboard.GetState();
     protected override void Update(GameTime gameTime)
     {
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
@@ -144,9 +175,12 @@ public class Game1 : Game
         {
             _angle -= 0.05f;
         }
+        if (keyState.IsKeyDown(Keys.G) && !previousKeyboardState.IsKeyDown(Keys.G))
+        {
+            _wireFrame = !_wireFrame;
+        }
 
-        
-        
+        previousKeyboardState = keyState;
         base.Update(gameTime);
     }
 
@@ -157,10 +191,10 @@ public class Game1 : Game
         // However, when designing an application, it is better to turn culling off by putting these lines of code in the beginning of your Draw method:
         RasterizerState rs = new RasterizerState();
         rs.CullMode = CullMode.None;
-        rs.FillMode = FillMode.WireFrame;
+        rs.FillMode = _wireFrame ? FillMode.WireFrame : FillMode.Solid; // .Solid . WireFrame
         _device.RasterizerState = rs;
 #endif        
-        _device.Clear(Color.Black);
+        _device.Clear(ClearOptions.Target|ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
 
 
         _effect.CurrentTechnique = _effect.Techniques["ColoredNoShading"];

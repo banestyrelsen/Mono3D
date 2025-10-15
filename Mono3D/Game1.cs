@@ -4,13 +4,27 @@ using Microsoft.Xna.Framework.Input;
 
 namespace Mono3D;
 
+
+public struct VertexPositionColorNormal
+{
+    public Vector3 Position;
+    public Color Color;
+    public Vector3 Normal;
+
+    public readonly static VertexDeclaration VertexDeclaration = new VertexDeclaration
+    (
+        new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
+        new VertexElement(sizeof(float) * 3, VertexElementFormat.Color, VertexElementUsage.Color, 0),
+        new VertexElement(sizeof(float) * 3 + 4, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0)
+    );
+}
 public class Game1 : Game
 {
     // Properties
     private GraphicsDeviceManager _graphics;
     private GraphicsDevice _device;
     private Effect _effect;
-    private VertexPositionColor[] _vertices;
+    private VertexPositionColorNormal[] _vertices;
     private int[] _indices;
     private Matrix _viewMatrix;
     private Matrix _projectionMatrix;
@@ -18,7 +32,10 @@ public class Game1 : Game
     private int _terrainWidth = 4;
     private int _terrainHeight = 3;
     private float[,] _heightData;
-    private bool _wireFrame = false;
+
+    // Toggles
+    private bool _isEnableWireFrame = false;
+    private bool _isEnableLighting = true;
 
     public Game1()
     {
@@ -53,7 +70,7 @@ public class Game1 : Game
             }
         }
         
-        _vertices = new VertexPositionColor[_terrainWidth * _terrainHeight];
+        _vertices = new VertexPositionColorNormal[_terrainWidth * _terrainHeight];
         for (int x = 0; x < _terrainWidth; x++)
         {
             for (int y = 0; y < _terrainHeight; y++)
@@ -156,6 +173,7 @@ public class Game1 : Game
         LoadHeightData(heightMap);
         SetUpVertices();
         SetUpIndices();
+        CalculateNormals();
     }
 
 
@@ -175,15 +193,46 @@ public class Game1 : Game
         {
             _angle -= 0.05f;
         }
+#if DEBUG
         if (keyState.IsKeyDown(Keys.G) && !previousKeyboardState.IsKeyDown(Keys.G))
         {
-            _wireFrame = !_wireFrame;
+            _isEnableWireFrame = !_isEnableWireFrame;
         }
-
+        if (keyState.IsKeyDown(Keys.L) && !previousKeyboardState.IsKeyDown(Keys.L))
+        {
+            _isEnableLighting = !_isEnableLighting;
+        }
+#endif
         previousKeyboardState = keyState;
         base.Update(gameTime);
     }
 
+    private void CalculateNormals()
+    {
+        for (int i = 0; i < _vertices.Length; i++)
+        {
+            _vertices[i].Normal = Vector3.Zero;
+        }
+        for (int i = 0; i < _indices.Length / 3; i++)
+        {
+            int index1 = _indices[i * 3];
+            int index2 = _indices[i * 3 + 1];
+            int index3 = _indices[i * 3 + 2];
+
+            Vector3 side1 = _vertices[index1].Position - _vertices[index3].Position;
+            Vector3 side2 = _vertices[index1].Position - _vertices[index2].Position;
+            Vector3 normal = Vector3.Cross(side1, side2);
+
+            _vertices[index1].Normal += normal;
+            _vertices[index2].Normal += normal;
+            _vertices[index3].Normal += normal;
+        }
+        for (int i = 0; i < _vertices.Length; i++)
+        {
+            _vertices[i].Normal.Normalize();
+        }
+    }
+    
     protected override void Draw(GameTime gameTime)
     {
 #if DEBUG
@@ -191,13 +240,13 @@ public class Game1 : Game
         // However, when designing an application, it is better to turn culling off by putting these lines of code in the beginning of your Draw method:
         RasterizerState rs = new RasterizerState();
         rs.CullMode = CullMode.None;
-        rs.FillMode = _wireFrame ? FillMode.WireFrame : FillMode.Solid; // .Solid . WireFrame
+        rs.FillMode = _isEnableWireFrame ? FillMode.WireFrame : FillMode.Solid; // .Solid . WireFrame
         _device.RasterizerState = rs;
 #endif        
         _device.Clear(ClearOptions.Target|ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
 
 
-        _effect.CurrentTechnique = _effect.Techniques["ColoredNoShading"];
+        _effect.CurrentTechnique = _effect.Techniques["Colored"];
         _effect.Parameters["xView"].SetValue(_viewMatrix);
         _effect.Parameters["xProjection"].SetValue(_projectionMatrix);
         // Matrix worldMatrix = Matrix.CreateRotationY(3 * _angle);
@@ -205,11 +254,19 @@ public class Game1 : Game
         Vector3 rotAxis = new Vector3(3*_angle, _angle, 2*_angle);
         rotAxis.Normalize();
         Matrix worldMatrix = Matrix.CreateTranslation(-_terrainWidth / 2.0f, 0, _terrainHeight / 2.0f) * Matrix.CreateRotationY(_angle);
+
+        Vector3 lightDirection = new Vector3(1.0f, -1.0f, -1.0f);
+        lightDirection.Normalize();
+        _effect.Parameters["xLightDirection"].SetValue(lightDirection);
+        _effect.Parameters["xAmbient"].SetValue(0.1f);
+        _effect.Parameters["xEnableLighting"].SetValue(true);
+
+
         _effect.Parameters["xWorld"].SetValue(worldMatrix);
         foreach (EffectPass pass in _effect.CurrentTechnique.Passes)
         {
             pass.Apply();
-            _device.DrawUserIndexedPrimitives(PrimitiveType.TriangleList, _vertices, 0, _vertices.Length, _indices, 0, _indices.Length / 3, VertexPositionColor.VertexDeclaration);
+            _device.DrawUserIndexedPrimitives(PrimitiveType.TriangleList, _vertices, 0, _vertices.Length, _indices, 0, _indices.Length / 3, VertexPositionColorNormal.VertexDeclaration);
         }
 
         base.Draw(gameTime);

@@ -31,3 +31,4 @@ C:\Users\valde\git\Mono3D\Mono3D\obj\Debug\net8.0\Mono3D.genruntimeconfig.cache
 C:\Users\valde\git\Mono3D\Mono3D\obj\Debug\net8.0\ref\Mono3D.dll
 C:\Users\valde\git\Mono3D\Mono3D\bin\Debug\net8.0\Content\effects.xnb
 C:\Users\valde\git\Mono3D\Mono3D\obj\Debug\net8.0\Mono3D.sourcelink.json
+C:\Users\valde\git\Mono3D\Mono3D\bin\Debug\net8.0\Content\heightmap.xnb

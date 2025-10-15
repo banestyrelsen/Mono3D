@@ -28,8 +28,8 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        _graphics.PreferredBackBufferWidth = 500;
-        _graphics.PreferredBackBufferHeight = 500;
+        _graphics.PreferredBackBufferWidth = 1920;
+        _graphics.PreferredBackBufferHeight = 1080;
         _graphics.IsFullScreen = false;
         _graphics.ApplyChanges();
         Window.Title = "Riemer's MonoGame Tutorials -- 3D Series 1";
@@ -76,27 +76,42 @@ public class Game1 : Game
     
     private void SetUpCamera()
     {
-        _viewMatrix = Matrix.CreateLookAt(new Vector3(0, 10, 0), new Vector3(0, 0, 0), new Vector3(0, 0, -1));
+        _viewMatrix = Matrix.CreateLookAt(new Vector3(120, 80, -160), new Vector3(0, 0, 0), new Vector3(0, 1, 0));
         _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1.0f, 300.0f);
     }    
     
-    private void LoadHeightData()
+    private void LoadHeightData(Texture2D heightMap)
     {
-        _heightData = new float[4, 3];
-        _heightData[0, 0] = 0;
-        _heightData[1, 0] = 0;
-        _heightData[2, 0] = 0;
-        _heightData[3, 0] = 0;
+        _terrainWidth = heightMap.Width;
+        _terrainHeight = heightMap.Height;
 
-        _heightData[0, 1] = 0.5f;
-        _heightData[1, 1] = 0;
-        _heightData[2, 1] = -1.0f;
-        _heightData[3, 1] = 0.2f;
+        Color[] heightMapColors = new Color[_terrainWidth * _terrainHeight];
+        heightMap.GetData(heightMapColors);
 
-        _heightData[0, 2] = 1.0f;
-        _heightData[1, 2] = 1.2f;
-        _heightData[2, 2] = 0.8f;
-        _heightData[3, 2] = 0;
+        _heightData = new float[_terrainWidth, _terrainHeight];
+        for (int x = 0; x < _terrainWidth; x++)
+        {
+            for (int y = 0; y < _terrainHeight; y++)
+            {
+                _heightData[x, y] = heightMapColors[x + y * _terrainWidth].R / 5.0f;
+            }
+        }
+        
+        // _heightData = new float[4, 3];
+        // _heightData[0, 0] = 0;
+        // _heightData[1, 0] = 0;
+        // _heightData[2, 0] = 0;
+        // _heightData[3, 0] = 0;
+        //
+        // _heightData[0, 1] = 0.5f;
+        // _heightData[1, 1] = 0;
+        // _heightData[2, 1] = -1.0f;
+        // _heightData[3, 1] = 0.2f;
+        //
+        // _heightData[0, 2] = 1.0f;
+        // _heightData[1, 2] = 1.2f;
+        // _heightData[2, 2] = 0.8f;
+        // _heightData[3, 2] = 0;
     }
     
     protected override void LoadContent()
@@ -106,7 +121,8 @@ public class Game1 : Game
         _effect = Content.Load<Effect>("effects");        
         SetUpCamera();
 
-        LoadHeightData();
+        Texture2D heightMap = Content.Load<Texture2D>("heightmap");
+        LoadHeightData(heightMap);
         SetUpVertices();
         SetUpIndices();
     }
@@ -134,7 +150,7 @@ public class Game1 : Game
         rs.FillMode = FillMode.WireFrame;
         _device.RasterizerState = rs;
 #endif        
-        _device.Clear(Color.DarkSlateBlue);
+        _device.Clear(Color.Black);
 
 
         _effect.CurrentTechnique = _effect.Techniques["ColoredNoShading"];

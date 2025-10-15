@@ -5,8 +5,10 @@
   <Config />
   <SourceFiles>
     <File>C:/Users/valde/git/Mono3D/Mono3D/Content/effects.fx</File>
+    <File>C:/Users/valde/git/Mono3D/Mono3D/Content/heightmap.bmp</File>
   </SourceFiles>
   <DestFiles>
+    <File xsi:nil="true" />
     <File xsi:nil="true" />
   </DestFiles>
 </SourceFileCollection>

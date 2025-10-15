@@ -482,3 +482,10 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+
+**/bin/**
+Mono3D/obj
+Mono3D/.config/**
+**/.idea/**
+**/.vscode/**

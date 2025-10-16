@@ -92,11 +92,11 @@ public class Game1 : Game
                 }
                 else if (_heightData[x, y] < minHeight + (maxHeight - minHeight) * 3 / 4)
                 {
-                    _vertices[x + y * _terrainWidth].Color = Color.Brown;
+                    _vertices[x + y * _terrainWidth].Color = Color.Green;
                 }
                 else
                 {
-                    _vertices[x + y * _terrainWidth].Color = Color.White;
+                    _vertices[x + y * _terrainWidth].Color = Color.Green;
                 }
             }
         }

@@ -25,6 +25,7 @@ public class Game1 : Game
         private Vector3 _lightDirection = new Vector3(3, -2, 5);
         private Vector3 _xwingPosition = new Vector3(8, 1, -3);
         private Quaternion _xwingRotation = Quaternion.Identity;
+        private float _gameSpeed = 1.0f;
         
         public Game1()
         {
@@ -202,6 +203,12 @@ public class Game1 : Game
             SetUpVertices();
         }
 
+        private void MoveForward(ref Vector3 position, Quaternion rotationQuat, float speed)
+        {
+            Vector3 addVector = Vector3.Transform(new Vector3(0, 0, -1), rotationQuat);
+            position += addVector * speed;
+        }
+        
         private void UpdateCamera()
         {
             Vector3 cameraPosition = new Vector3(0, 0.1f, 0.6f);
@@ -213,6 +220,36 @@ public class Game1 : Game
             _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 0.2f, 500.0f);
         }
         
+        private void ProcessKeyboard(GameTime gameTime)
+        {
+            float leftRightRotation = 0;
+
+            float turningSpeed = (float)gameTime.ElapsedGameTime.TotalMilliseconds / 1000.0f;
+            turningSpeed *= 1.6f * _gameSpeed;
+
+            KeyboardState keys = Keyboard.GetState();
+
+            if (keys.IsKeyDown(Keys.A))
+            {
+                leftRightRotation += turningSpeed;
+            }
+            if (keys.IsKeyDown(Keys.D))
+            {
+                leftRightRotation -= turningSpeed;
+            }
+            float upDownRotation = 0;
+            if (keys.IsKeyDown(Keys.S))
+            {
+                upDownRotation += turningSpeed;
+            }
+            if (keys.IsKeyDown(Keys.W))
+            {
+                upDownRotation -= turningSpeed;
+            }
+            Quaternion additionalRotation = Quaternion.CreateFromAxisAngle(new Vector3(0, 0, -1), leftRightRotation) * Quaternion.CreateFromAxisAngle(new Vector3(1, 0, 0), upDownRotation);
+            _xwingRotation *= additionalRotation;
+        }
+        
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || 
@@ -221,6 +258,9 @@ public class Game1 : Game
 
             // TODO: Add your update logic here
             UpdateCamera();
+            ProcessKeyboard(gameTime);
+            float moveSpeed = gameTime.ElapsedGameTime.Milliseconds / 500.0f * _gameSpeed;
+            MoveForward(ref _xwingPosition, _xwingRotation, moveSpeed);
             
             base.Update(gameTime);
         }

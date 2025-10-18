@@ -33,9 +33,7 @@ public class Game1 : Game
         private BoundingBox _completeCityBox;
         private Model _targetModel;
         private const int _maxTargets = 50;
-
         private List<BoundingSphere> _targetList = new List<BoundingSphere> ();
-
         public struct Bullet
         {
             public Vector3 position;
@@ -44,6 +42,9 @@ public class Game1 : Game
         private List<Bullet> _bulletList = new List<Bullet>();
         private double _lastBulletTime = 0;
         private Texture2D _bulletTexture;
+        
+        private Texture2D[] _skyboxTextures;
+        private Model _skyboxModel;
         
         public Game1()
         {
@@ -206,6 +207,28 @@ public class Game1 : Game
             }
             return newModel;
         }
+
+        private Model LoadModel(string assetName, out Texture2D[] textures)
+        {
+            Model newModel = Content.Load<Model>(assetName);
+            List<Texture2D> modelTextures = new List<Texture2D>();
+
+            foreach (ModelMesh mesh in newModel.Meshes)
+            {
+                foreach (BasicEffect currentEffect in mesh.Effects)
+                {
+                    modelTextures.Add(currentEffect.Texture);
+                }
+
+                foreach (ModelMeshPart meshPart in mesh.MeshParts)
+                {
+                    meshPart.Effect = _effect.Clone();
+                }
+            }
+
+            textures = modelTextures.ToArray();
+            return newModel;
+        }
         
         private void SetUpBoundingBoxes()
         {
@@ -271,7 +294,8 @@ public class Game1 : Game
             _xwingModel = LoadModel("xwing");
             _targetModel = LoadModel("target");
             _bulletTexture = Content.Load<Texture2D>("bullet");
-
+            _skyboxModel = LoadModel("skybox", out _skyboxTextures);
+            
             SetUpCamera();
             SetUpVertices();
             SetUpBoundingBoxes();
@@ -527,11 +551,45 @@ public class Game1 : Game
             }
         }
         
+        private void DrawSkybox()
+        {
+            SamplerState ss = new SamplerState();
+            ss.AddressU = TextureAddressMode.Clamp;
+            ss.AddressV = TextureAddressMode.Clamp;
+            _device.SamplerStates[0] = ss;
+
+            DepthStencilState dss = new DepthStencilState();
+            dss.DepthBufferEnable = false;
+            _device.DepthStencilState = dss;
+
+            Matrix[] skyboxTransforms = new Matrix[_skyboxModel.Bones.Count];
+            _skyboxModel.CopyAbsoluteBoneTransformsTo(skyboxTransforms);
+            int i = 0;
+            foreach (ModelMesh mesh in _skyboxModel.Meshes)
+            {
+                foreach (Effect currentEffect in mesh.Effects)
+                {
+                    Matrix worldMatrix = skyboxTransforms[mesh.ParentBone.Index] * Matrix.CreateTranslation(_xwingPosition);
+                    currentEffect.CurrentTechnique = currentEffect.Techniques["Textured"];
+                    currentEffect.Parameters["xWorld"].SetValue(worldMatrix);
+                    currentEffect.Parameters["xView"].SetValue(_viewMatrix);
+                    currentEffect.Parameters["xProjection"].SetValue(_projectionMatrix);
+                    currentEffect.Parameters["xTexture"].SetValue(_skyboxTextures[i++]);
+                }
+                mesh.Draw();
+            }
+
+            dss = new DepthStencilState();
+            dss.DepthBufferEnable = true;
+            _device.DepthStencilState = dss;
+        }
+        
         protected override void Draw(GameTime gameTime)
         {
             _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkSlateBlue, 1.0f, 0);
 
             // TODO: Add your drawing code here
+            DrawSkybox();
             DrawCity();
             DrawModel();
             DrawTargets();

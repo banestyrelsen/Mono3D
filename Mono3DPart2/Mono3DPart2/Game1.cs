@@ -390,6 +390,17 @@ public class Game1 : Game
                 Bullet currentBullet = _bulletList[i];
                 MoveForward(ref currentBullet.position, currentBullet.rotation, moveSpeed);
                 _bulletList[i] = currentBullet;
+                
+                BoundingSphere bulletSphere = new BoundingSphere(currentBullet.position, 0.05f);
+                CollisionType colType = CheckCollision(bulletSphere);
+                if (colType != CollisionType.None)
+                {
+                    _bulletList.RemoveAt(i);
+                    i--;
+
+                    if (colType == CollisionType.Target)
+                        _gameSpeed *= 1.05f;
+                }
             }
         }
         
@@ -506,12 +517,13 @@ public class Game1 : Game
                 _effect.Parameters["xTexture"].SetValue(_bulletTexture);
                 _effect.Parameters["xCamUp"].SetValue(_cameraUpDirection);
                 _effect.Parameters["xPointSpriteSize"].SetValue(0.1f);
-                
+                _device.BlendState = BlendState.Additive;
                 foreach (EffectPass pass in _effect.CurrentTechnique.Passes)
                 {
                     pass.Apply();
                     _device.DrawUserPrimitives(PrimitiveType.TriangleList, bulletVertices, 0, _bulletList.Count * 2);
                 }
+                _device.BlendState = BlendState.Opaque;
             }
         }
         

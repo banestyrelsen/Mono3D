@@ -26,6 +26,9 @@ public class Game1 : Game
         private Vector3 _xwingPosition = new Vector3(8, 1, -3);
         private Quaternion _xwingRotation = Quaternion.Identity;
         private float _gameSpeed = 1.0f;
+        public enum CollisionType { None, Building, Boundary, Target }
+        private BoundingBox[] _buildingBoundingBoxes;
+        private BoundingBox _completeCityBox;
         
         public Game1()
         {
@@ -189,6 +192,36 @@ public class Game1 : Game
             return newModel;
         }
         
+        private void SetUpBoundingBoxes()
+        {
+            int cityWidth = _floorPlan.GetLength(0);
+            int cityLength = _floorPlan.GetLength(1);
+
+            List<BoundingBox> bbList = new List<BoundingBox> ();
+            for (int x = 0; x < cityWidth; x++)
+            {
+                for (int z = 0; z < cityLength; z++)
+                {
+                    int buildingType = _floorPlan[x, z];
+                    if (buildingType != 0)
+                    {
+                        int buildingHeight = _buildingHeights[buildingType];
+                        Vector3[] buildingPoints = new Vector3[2];
+                        buildingPoints[0] = new Vector3(x, 0, -z);
+                        buildingPoints[1] = new Vector3(x + 1, buildingHeight, -z - 1);
+                        BoundingBox buildingBox = BoundingBox.CreateFromPoints(buildingPoints);
+                        bbList.Add(buildingBox);
+                    }
+                }
+            }
+            _buildingBoundingBoxes = bbList.ToArray();
+            
+            Vector3[] boundaryPoints = new Vector3[2];
+            boundaryPoints[0] = new Vector3(0, 0, 0);
+            boundaryPoints[1] = new Vector3(cityWidth, 20, -cityLength);
+            _completeCityBox = BoundingBox.CreateFromPoints(boundaryPoints);
+        }
+        
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -201,6 +234,7 @@ public class Game1 : Game
             
             SetUpCamera();
             SetUpVertices();
+            SetUpBoundingBoxes();            
         }
 
         private void MoveForward(ref Vector3 position, Quaternion rotationQuat, float speed)
@@ -249,6 +283,35 @@ public class Game1 : Game
             Quaternion additionalRotation = Quaternion.CreateFromAxisAngle(new Vector3(0, 0, -1), leftRightRotation) * Quaternion.CreateFromAxisAngle(new Vector3(1, 0, 0), upDownRotation);
             _xwingRotation *= additionalRotation;
         }
+
+        private CollisionType CheckCollision(BoundingSphere sphere)
+        {
+            for (int i = 0; i < _buildingBoundingBoxes.Length; i++)
+            {
+                if (_buildingBoundingBoxes[i].Contains(sphere) != ContainmentType.Disjoint)
+                {
+                    return CollisionType.Building;
+                }
+            }
+
+            if (_completeCityBox.Contains(sphere) != ContainmentType.Contains)
+            {
+                return CollisionType.Boundary;
+            }
+
+            return CollisionType.None;
+        }
+
+        private void Collide()
+        {
+            BoundingSphere xwingSpere = new BoundingSphere(_xwingPosition, 0.04f);
+            if (CheckCollision(xwingSpere) != CollisionType.None)
+            {
+                _xwingPosition = new Vector3(8, 1, -3);
+                _xwingRotation = Quaternion.Identity;
+                _gameSpeed /= 1.1f;
+            }
+        }
         
         protected override void Update(GameTime gameTime)
         {
@@ -261,6 +324,7 @@ public class Game1 : Game
             ProcessKeyboard(gameTime);
             float moveSpeed = gameTime.ElapsedGameTime.Milliseconds / 500.0f * _gameSpeed;
             MoveForward(ref _xwingPosition, _xwingRotation, moveSpeed);
+            Collide();
             
             base.Update(gameTime);
         }

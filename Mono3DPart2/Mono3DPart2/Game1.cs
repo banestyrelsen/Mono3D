@@ -20,6 +20,7 @@ public class Game1 : Game
         private int[,] _floorPlan;
         private Vector3 _cameraPosition;
         private Vector3 _cameraUpDirection;
+        private Quaternion _cameraRotation = Quaternion.Identity;
 
         private VertexBuffer _cityVertexBuffer;
         private int[] _buildingHeights = new int[] { 0, 2, 2, 6, 5, 4 };
@@ -308,13 +309,17 @@ public class Game1 : Game
             position += addVector * speed;
         }
         
-        private void UpdateCamera()
+        private void UpdateCamera()a 
         {
+            _cameraRotation = Quaternion.Lerp(_cameraRotation, _xwingRotation, 0.1f);
+            
             Vector3 cameraPosition = new Vector3(0, 0.1f, 0.6f);
-            cameraPosition = Vector3.Transform(cameraPosition, Matrix.CreateFromQuaternion(_xwingRotation));
+            cameraPosition = Vector3.Transform(cameraPosition, Matrix.CreateFromQuaternion(_cameraRotation));
             cameraPosition += _xwingPosition;
+
             Vector3 cameraUpDirection = new Vector3(0, 1, 0);
-            cameraUpDirection = Vector3.Transform(cameraUpDirection, Matrix.CreateFromQuaternion(_xwingRotation));
+            cameraUpDirection = Vector3.Transform(cameraUpDirection, Matrix.CreateFromQuaternion(_cameraRotation));
+
             _viewMatrix = Matrix.CreateLookAt(cameraPosition, _xwingPosition, cameraUpDirection);
             _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 0.2f, 500.0f);
             _cameraPosition = cameraPosition;

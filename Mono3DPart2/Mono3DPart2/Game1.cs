@@ -29,7 +29,11 @@ public class Game1 : Game
         public enum CollisionType { None, Building, Boundary, Target }
         private BoundingBox[] _buildingBoundingBoxes;
         private BoundingBox _completeCityBox;
-        
+        private Model _targetModel;
+        private const int _maxTargets = 50;
+
+        private List<BoundingSphere> _targetList = new List<BoundingSphere> ();
+
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -222,6 +226,29 @@ public class Game1 : Game
             _completeCityBox = BoundingBox.CreateFromPoints(boundaryPoints);
         }
         
+        private void AddTargets()
+        {
+            int cityWidth = _floorPlan.GetLength(0);
+            int cityLength = _floorPlan.GetLength(1);
+
+            Random random = new Random();
+
+            while (_targetList.Count < _maxTargets)
+            {
+                int x = random.Next(cityWidth);
+                int z = -random.Next(cityLength);
+                float y = (float)random.Next(2000) / 1000f + 1;
+                float radius = (float)random.Next(1000) / 1000f * 0.2f + 0.01f;
+
+                BoundingSphere newTarget = new BoundingSphere(new Vector3(x,y,z), radius);
+
+                if (CheckCollision(newTarget) == CollisionType.None)
+                {
+                    _targetList.Add(newTarget);
+                }
+            }
+        }
+        
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -231,10 +258,12 @@ public class Game1 : Game
             _effect = Content.Load<Effect>("effects");
             _sceneryTexture = Content.Load<Texture2D>("texturemap");
             _xwingModel = LoadModel("xwing");
+            _targetModel = LoadModel("target");
             
             SetUpCamera();
             SetUpVertices();
-            SetUpBoundingBoxes();            
+            SetUpBoundingBoxes();
+            AddTargets();
         }
 
         private void MoveForward(ref Vector3 position, Quaternion rotationQuat, float speed)
@@ -299,6 +328,18 @@ public class Game1 : Game
                 return CollisionType.Boundary;
             }
 
+            for (int i = 0; i < _targetList.Count; i++)
+            {
+                if (_targetList[i].Contains(sphere) != ContainmentType.Disjoint)
+                {
+                    _targetList.RemoveAt(i);
+                    i--;
+                    AddTargets();
+
+                    return CollisionType.Target;
+                }
+            }
+            
             return CollisionType.None;
         }
 
@@ -374,6 +415,32 @@ public class Game1 : Game
             }
         }
         
+        private void DrawTargets()
+        {
+            for (int i = 0; i < _targetList.Count; i++)
+            {
+                Matrix worldMatrix = Matrix.CreateScale(_targetList[i].Radius) * Matrix.CreateTranslation(_targetList[i].Center);
+
+                Matrix[] targetTransforms = new Matrix[_targetModel.Bones.Count];
+                _targetModel.CopyAbsoluteBoneTransformsTo(targetTransforms);
+                foreach (ModelMesh modelMesh in _targetModel.Meshes)
+                {
+                    foreach (Effect currentEffect in modelMesh.Effects)
+                    {
+                        currentEffect.CurrentTechnique = currentEffect.Techniques["Colored"];
+                        currentEffect.Parameters["xWorld"].SetValue(targetTransforms[modelMesh.ParentBone.Index] * worldMatrix);
+                        currentEffect.Parameters["xView"].SetValue(_viewMatrix);
+                        currentEffect.Parameters["xProjection"].SetValue(_projectionMatrix);
+                        currentEffect.Parameters["xEnableLighting"].SetValue(true);
+                        currentEffect.Parameters["xLightDirection"].SetValue(_lightDirection);
+                        currentEffect.Parameters["xAmbient"].SetValue(0.5f);
+                    }
+
+                    modelMesh.Draw();
+                }
+            }
+        }
+        
         protected override void Draw(GameTime gameTime)
         {
             _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkSlateBlue, 1.0f, 0);
@@ -381,6 +448,7 @@ public class Game1 : Game
             // TODO: Add your drawing code here
             DrawCity();
             DrawModel();
+            DrawTargets();
             
             base.Draw(gameTime);
         }

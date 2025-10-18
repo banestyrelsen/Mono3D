@@ -18,6 +18,8 @@ public class Game1 : Game
         private Matrix _projectionMatrix;
         private Texture2D _sceneryTexture;
         private int[,] _floorPlan;
+        private Vector3 _cameraPosition;
+        private Vector3 _cameraUpDirection;
 
         private VertexBuffer _cityVertexBuffer;
         private int[] _buildingHeights = new int[] { 0, 2, 2, 6, 5, 4 };
@@ -34,6 +36,15 @@ public class Game1 : Game
 
         private List<BoundingSphere> _targetList = new List<BoundingSphere> ();
 
+        public struct Bullet
+        {
+            public Vector3 position;
+            public Quaternion rotation;
+        }
+        private List<Bullet> _bulletList = new List<Bullet>();
+        private double _lastBulletTime = 0;
+        private Texture2D _bulletTexture;
+        
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -259,7 +270,8 @@ public class Game1 : Game
             _sceneryTexture = Content.Load<Texture2D>("texturemap");
             _xwingModel = LoadModel("xwing");
             _targetModel = LoadModel("target");
-            
+            _bulletTexture = Content.Load<Texture2D>("bullet");
+
             SetUpCamera();
             SetUpVertices();
             SetUpBoundingBoxes();
@@ -281,6 +293,8 @@ public class Game1 : Game
             cameraUpDirection = Vector3.Transform(cameraUpDirection, Matrix.CreateFromQuaternion(_xwingRotation));
             _viewMatrix = Matrix.CreateLookAt(cameraPosition, _xwingPosition, cameraUpDirection);
             _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 0.2f, 500.0f);
+            _cameraPosition = cameraPosition;
+            _cameraUpDirection = cameraUpDirection;
         }
         
         private void ProcessKeyboard(GameTime gameTime)
@@ -311,6 +325,20 @@ public class Game1 : Game
             }
             Quaternion additionalRotation = Quaternion.CreateFromAxisAngle(new Vector3(0, 0, -1), leftRightRotation) * Quaternion.CreateFromAxisAngle(new Vector3(1, 0, 0), upDownRotation);
             _xwingRotation *= additionalRotation;
+            
+            if (keys.IsKeyDown(Keys.Space))
+            {
+                double currentTime = gameTime.TotalGameTime.TotalMilliseconds;
+                if (currentTime - _lastBulletTime > 100)
+                {
+                    Bullet newBullet = new Bullet();
+                    newBullet.position = _xwingPosition;
+                    newBullet.rotation = _xwingRotation;
+                    _bulletList.Add(newBullet);
+
+                    _lastBulletTime = currentTime;
+                }
+            }
         }
 
         private CollisionType CheckCollision(BoundingSphere sphere)
@@ -354,6 +382,17 @@ public class Game1 : Game
             }
         }
         
+        private void UpdateBulletPositions(float moveSpeed)
+        {
+            moveSpeed *= 2f;
+            for (int i = 0; i < _bulletList.Count; i++)
+            {
+                Bullet currentBullet = _bulletList[i];
+                MoveForward(ref currentBullet.position, currentBullet.rotation, moveSpeed);
+                _bulletList[i] = currentBullet;
+            }
+        }
+        
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || 
@@ -366,7 +405,7 @@ public class Game1 : Game
             float moveSpeed = gameTime.ElapsedGameTime.Milliseconds / 500.0f * _gameSpeed;
             MoveForward(ref _xwingPosition, _xwingRotation, moveSpeed);
             Collide();
-            
+            UpdateBulletPositions(moveSpeed);
             base.Update(gameTime);
         }
 
@@ -441,6 +480,41 @@ public class Game1 : Game
             }
         }
         
+        private void DrawBullets()
+        {
+            if (_bulletList.Count > 0)
+            {
+                VertexPositionTexture[] bulletVertices = new VertexPositionTexture[_bulletList.Count * 6];
+                int i = 0;
+                foreach (Bullet currentBullet in _bulletList)
+                {
+                    Vector3 center = currentBullet.position;
+
+                    bulletVertices[i++] = new VertexPositionTexture(center, new Vector2(1, 1));
+                    bulletVertices[i++] = new VertexPositionTexture(center, new Vector2(0, 0));
+                    bulletVertices[i++] = new VertexPositionTexture(center, new Vector2(1, 0));
+
+                    bulletVertices[i++] = new VertexPositionTexture(center, new Vector2(1, 1));
+                    bulletVertices[i++] = new VertexPositionTexture(center, new Vector2(0, 1));
+                    bulletVertices[i++] = new VertexPositionTexture(center, new Vector2(0, 0));
+                }
+                _effect.CurrentTechnique = _effect.Techniques["PointSprites"];
+                _effect.Parameters["xWorld"].SetValue(Matrix.Identity);
+                _effect.Parameters["xProjection"].SetValue(_projectionMatrix);
+                _effect.Parameters["xView"].SetValue(_viewMatrix);
+                _effect.Parameters["xCamPos"].SetValue(_cameraPosition);
+                _effect.Parameters["xTexture"].SetValue(_bulletTexture);
+                _effect.Parameters["xCamUp"].SetValue(_cameraUpDirection);
+                _effect.Parameters["xPointSpriteSize"].SetValue(0.1f);
+                
+                foreach (EffectPass pass in _effect.CurrentTechnique.Passes)
+                {
+                    pass.Apply();
+                    _device.DrawUserPrimitives(PrimitiveType.TriangleList, bulletVertices, 0, _bulletList.Count * 2);
+                }
+            }
+        }
+        
         protected override void Draw(GameTime gameTime)
         {
             _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkSlateBlue, 1.0f, 0);
@@ -449,7 +523,8 @@ public class Game1 : Game
             DrawCity();
             DrawModel();
             DrawTargets();
-            
+            DrawBullets();
+
             base.Draw(gameTime);
         }
 }

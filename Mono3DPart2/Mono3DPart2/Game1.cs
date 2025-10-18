@@ -23,6 +23,8 @@ public class Game1 : Game
         private int[] _buildingHeights = new int[] { 0, 2, 2, 6, 5, 4 };
         private Model _xwingModel;
         private Vector3 _lightDirection = new Vector3(3, -2, 5);
+        private Vector3 _xwingPosition = new Vector3(8, 1, -3);
+        private Quaternion _xwingRotation = Quaternion.Identity;
         
         public Game1()
         {
@@ -200,6 +202,17 @@ public class Game1 : Game
             SetUpVertices();
         }
 
+        private void UpdateCamera()
+        {
+            Vector3 cameraPosition = new Vector3(0, 0.1f, 0.6f);
+            cameraPosition = Vector3.Transform(cameraPosition, Matrix.CreateFromQuaternion(_xwingRotation));
+            cameraPosition += _xwingPosition;
+            Vector3 cameraUpDirection = new Vector3(0, 1, 0);
+            cameraUpDirection = Vector3.Transform(cameraUpDirection, Matrix.CreateFromQuaternion(_xwingRotation));
+            _viewMatrix = Matrix.CreateLookAt(cameraPosition, _xwingPosition, cameraUpDirection);
+            _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 0.2f, 500.0f);
+        }
+        
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || 
@@ -207,7 +220,8 @@ public class Game1 : Game
                 Exit();
 
             // TODO: Add your update logic here
-
+            UpdateCamera();
+            
             base.Update(gameTime);
         }
 
@@ -234,7 +248,8 @@ public class Game1 : Game
         {
             Matrix worldMatrix = Matrix.CreateScale(0.0005f, 0.0005f, 0.0005f) *
                                  Matrix.CreateRotationY(MathHelper.Pi) *
-                                 Matrix.CreateTranslation(new Vector3(19, 12, -5));
+                                 Matrix.CreateFromQuaternion(_xwingRotation) *
+                                 Matrix.CreateTranslation(_xwingPosition);
 
             Matrix[] xwingTransforms = new Matrix[_xwingModel.Bones.Count];
             _xwingModel.CopyAbsoluteBoneTransformsTo(xwingTransforms);

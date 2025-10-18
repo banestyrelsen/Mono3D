@@ -309,7 +309,7 @@ public class Game1 : Game
             position += addVector * speed;
         }
         
-        private void UpdateCamera()a 
+        private void UpdateCamera()
         {
             _cameraRotation = Quaternion.Lerp(_cameraRotation, _xwingRotation, 0.1f);
             

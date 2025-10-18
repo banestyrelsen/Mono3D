@@ -21,6 +21,8 @@ public class Game1 : Game
 
         private VertexBuffer _cityVertexBuffer;
         private int[] _buildingHeights = new int[] { 0, 2, 2, 6, 5, 4 };
+        private Model _xwingModel;
+        private Vector3 _lightDirection = new Vector3(3, -2, 5);
         
         public Game1()
         {
@@ -39,7 +41,8 @@ public class Game1 : Game
             Window.Title = "Riemer's MonoGame Tutorials -- 3D Series 2";
 
             LoadFloorPlan();
-            
+            _lightDirection.Normalize();
+
             base.Initialize();
         }
 
@@ -170,6 +173,19 @@ public class Game1 : Game
             }
         }
         
+        private Model LoadModel(string assetName)
+        {
+            Model newModel = Content.Load<Model>(assetName);
+            foreach (ModelMesh mesh in newModel.Meshes)
+            {
+                foreach (ModelMeshPart meshPart in mesh.MeshParts)
+                {
+                    meshPart.Effect = _effect.Clone();
+                }
+            }
+            return newModel;
+        }
+        
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -178,6 +194,7 @@ public class Game1 : Game
             _device = _graphics.GraphicsDevice;
             _effect = Content.Load<Effect>("effects");
             _sceneryTexture = Content.Load<Texture2D>("texturemap");
+            _xwingModel = LoadModel("xwing");
             
             SetUpCamera();
             SetUpVertices();
@@ -201,12 +218,40 @@ public class Game1 : Game
             _effect.Parameters["xView"].SetValue(_viewMatrix);
             _effect.Parameters["xProjection"].SetValue(_projectionMatrix);
             _effect.Parameters["xTexture"].SetValue(_sceneryTexture);
-
+            _effect.Parameters["xEnableLighting"].SetValue(true);
+            _effect.Parameters["xLightDirection"].SetValue(_lightDirection);
+            _effect.Parameters["xAmbient"].SetValue(0.5f);
+            
             foreach (EffectPass pass in _effect.CurrentTechnique.Passes)
             {
                 pass.Apply();
                 _device.SetVertexBuffer(_cityVertexBuffer);
                 _device.DrawPrimitives(PrimitiveType.TriangleList, 0, _cityVertexBuffer.VertexCount/3);
+            }
+        }
+        
+        private void DrawModel()
+        {
+            Matrix worldMatrix = Matrix.CreateScale(0.0005f, 0.0005f, 0.0005f) *
+                                 Matrix.CreateRotationY(MathHelper.Pi) *
+                                 Matrix.CreateTranslation(new Vector3(19, 12, -5));
+
+            Matrix[] xwingTransforms = new Matrix[_xwingModel.Bones.Count];
+            _xwingModel.CopyAbsoluteBoneTransformsTo(xwingTransforms);
+
+            foreach (ModelMesh mesh in _xwingModel.Meshes)
+            {
+                foreach (Effect currentEffect in mesh.Effects)
+                {
+                    currentEffect.CurrentTechnique = currentEffect.Techniques["Colored"];
+                    currentEffect.Parameters["xWorld"].SetValue(xwingTransforms[mesh.ParentBone.Index] * worldMatrix);
+                    currentEffect.Parameters["xView"].SetValue(_viewMatrix);
+                    currentEffect.Parameters["xProjection"].SetValue(_projectionMatrix);
+                    currentEffect.Parameters["xEnableLighting"].SetValue(true);
+                    currentEffect.Parameters["xLightDirection"].SetValue(_lightDirection);          
+                    currentEffect.Parameters["xAmbient"].SetValue(0.5f);
+                }
+                mesh.Draw();
             }
         }
         
@@ -216,6 +261,7 @@ public class Game1 : Game
 
             // TODO: Add your drawing code here
             DrawCity();
+            DrawModel();
             
             base.Draw(gameTime);
         }

@@ -9,17 +9,17 @@ public class Game1 : Game
     struct MyOwnVertexFormat
     {
         private Vector3 position;
-        private Color color;
+        private Vector2 texCoord;
 
-        public MyOwnVertexFormat(Vector3 position, Color color)
+        public MyOwnVertexFormat(Vector3 position, Vector2 texCoord)
         {
             this.position = position;
-            this.color = color;
+            this.texCoord = texCoord;
         }
         public readonly static VertexDeclaration VertexDeclaration = new VertexDeclaration
         (
             new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
-            new VertexElement(sizeof(float) * 3, VertexElementFormat.Color, VertexElementUsage.Color, 0)
+            new VertexElement(sizeof(float) * 3, VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 0)
         );
     }
 
@@ -31,7 +31,8 @@ public class Game1 : Game
     Matrix projectionMatrix;
     VertexBuffer vertexBuffer;
     Vector3 cameraPos;
-
+    Texture2D streetTexture;
+    
     public Game1()
     {
         graphics = new GraphicsDeviceManager(this);
@@ -55,6 +56,7 @@ public class Game1 : Game
 
 
         effect = Content.Load<Effect>("v_effects");
+        streetTexture = Content.Load<Texture2D> ("streettexture");
         SetUpVertices();
         SetUpCamera();
     }
@@ -63,9 +65,9 @@ public class Game1 : Game
     {
         MyOwnVertexFormat[] vertices = new MyOwnVertexFormat[3];
 
-        vertices[0] = new MyOwnVertexFormat(new Vector3(-2, 2, 0), Color.Red);
-        vertices[1] = new MyOwnVertexFormat(new Vector3(2, -2, -2), Color.Green);
-        vertices[2] = new MyOwnVertexFormat(new Vector3(0, 0, 2), Color.Yellow);
+        vertices[0] = new MyOwnVertexFormat(new Vector3(-2, 2, 0), new Vector2(0.0f, 0.0f));
+        vertices[1] = new MyOwnVertexFormat(new Vector3(2, -2, -2), new Vector2(0.125f, 1.0f));
+        vertices[2] = new MyOwnVertexFormat(new Vector3(0, 0, 2), new Vector2(0.25f, 0.0f));
 
         vertexBuffer = new VertexBuffer(device, MyOwnVertexFormat.VertexDeclaration, vertices.Length,BufferUsage.WriteOnly);
         vertexBuffer.SetData(vertices);
@@ -97,6 +99,7 @@ public class Game1 : Game
 
         effect.CurrentTechnique = effect.Techniques["Simplest"];
         effect.Parameters["xViewProjection"].SetValue(viewMatrix*projectionMatrix);
+        effect.Parameters["xTexture"].SetValue(streetTexture);
 
         foreach (EffectPass pass in effect.CurrentTechnique.Passes)
         {

@@ -54,7 +54,7 @@ public class Game1 : Game
         device = GraphicsDevice;
 
 
-        effect = Content.Load<Effect>("effects");
+        effect = Content.Load<Effect>("v_effects");
         SetUpVertices();
         SetUpCamera();
     }
@@ -95,10 +95,8 @@ public class Game1 : Game
     {
         device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkSlateBlue, 1.0f, 0);
 
-        effect.CurrentTechnique = effect.Techniques["ColoredNoShading"];
-        effect.Parameters["xView"].SetValue(viewMatrix);
-        effect.Parameters["xProjection"].SetValue(projectionMatrix);
-        effect.Parameters["xWorld"].SetValue(Matrix.Identity);
+        effect.CurrentTechnique = effect.Techniques["Simplest"];
+        effect.Parameters["xViewProjection"].SetValue(viewMatrix*projectionMatrix);
 
         foreach (EffectPass pass in effect.CurrentTechnique.Passes)
         {

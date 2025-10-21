@@ -1,4 +1,4 @@
-﻿float4x4 xViewProjection;
+﻿float4x4 xWorldViewProjection;
 Texture xTexture;
 
 sampler TextureSampler = sampler_state { texture = <xTexture> ; magfilter = LINEAR; minfilter = LINEAR; mipfilter=LINEAR; AddressU = mirror; AddressV = mirror;};
@@ -18,7 +18,7 @@ VertexToPixel SimplestVertexShader( float4 inPos : POSITION, float2 inTexCoords 
 {
     VertexToPixel Output = (VertexToPixel)0;
 
-    Output.Position =mul(inPos, xViewProjection);
+    Output.Position =mul(inPos, xWorldViewProjection);
     Output.TexCoords = inTexCoords;
 
     return Output;

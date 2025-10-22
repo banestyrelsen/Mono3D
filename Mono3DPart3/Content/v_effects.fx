@@ -6,9 +6,11 @@ float3 xLightPos;
 float xLightPower;
 float xAmbient;
 Texture xShadowMap;
+Texture xCarLightTexture;
 
 sampler TextureSampler = sampler_state { texture = <xTexture> ; magfilter = LINEAR; minfilter = LINEAR; mipfilter=LINEAR; AddressU = mirror; AddressV = mirror;};
 sampler ShadowMapSampler = sampler_state { texture = <xShadowMap> ; magfilter = LINEAR; minfilter = LINEAR; mipfilter=LINEAR; AddressU = clamp; AddressV = clamp;};
+sampler CarLightSampler = sampler_state { texture = <xCarLightTexture> ; magfilter = LINEAR; minfilter=LINEAR; mipfilter = LINEAR; AddressU = clamp; AddressV = clamp;};
 
 struct VertexToPixel
 {
@@ -137,9 +139,12 @@ SScenePixelToFrame ShadowedScenePixelShader(SSceneVertexToPixel PSIn)
          float realDistance = PSIn.Pos2DAsSeenByLight.z/PSIn.Pos2DAsSeenByLight.w;
          if ((realDistance - 1.0f/100.0f) <= depthStoredInShadowMap)
          {
-             diffuseLightingFactor = DotProduct(xLightPos, PSIn.Position3D, PSIn.Normal);
-             diffuseLightingFactor = saturate(diffuseLightingFactor);
-             diffuseLightingFactor *= xLightPower;            
+                diffuseLightingFactor = DotProduct(xLightPos, PSIn.Position3D, PSIn.Normal);
+                diffuseLightingFactor = saturate(diffuseLightingFactor);
+                diffuseLightingFactor *= xLightPower;
+                
+                float lightTextureFactor = tex2D(CarLightSampler, ProjectedTexCoords).r;
+                diffuseLightingFactor *= lightTextureFactor;
          }
      }
          

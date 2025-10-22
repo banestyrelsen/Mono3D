@@ -44,7 +44,8 @@ public class Game1 : Game
     float lightPower;
     float ambientPower;
     RenderTarget2D renderTarget;
-    Texture2D shadowMap;    
+    Texture2D shadowMap;
+    Texture2D carLight;
 
     public Game1()
     {
@@ -89,6 +90,7 @@ public class Game1 : Game
         carModel = LoadModel("ferrari", out carTextures);
         lamppostModel = LoadModel("Lampa", out lamppostTextures);
         lamppostTextures[0] = streetTexture;
+        carLight = Content.Load<Texture2D> ("carlight");
         SetUpVertices();
         
         PresentationParameters pp = device.PresentationParameters;
@@ -198,6 +200,7 @@ public class Game1 : Game
         effect.Parameters["xAmbient"].SetValue(ambientPower);
         effect.Parameters["xLightsWorldViewProjection"].SetValue(Matrix.Identity * lightsViewProjectionMatrix);
         effect.Parameters["xShadowMap"].SetValue(shadowMap);
+        effect.Parameters["xCarLightTexture"].SetValue(carLight);
         
         foreach (EffectPass pass in effect.CurrentTechnique.Passes)
         {
@@ -235,6 +238,7 @@ public class Game1 : Game
                 currentEffect.Parameters["xAmbient"].SetValue(ambientPower);
                 currentEffect.Parameters["xLightsWorldViewProjection"].SetValue(worldMatrix * lightsViewProjectionMatrix);
                 currentEffect.Parameters["xShadowMap"].SetValue(shadowMap);
+                currentEffect.Parameters["xCarLightTexture"].SetValue(carLight);
             }
             mesh.Draw();
         }

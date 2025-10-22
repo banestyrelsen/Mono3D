@@ -32,6 +32,7 @@ public class Game1 : Game
     Effect effect;
     Matrix viewMatrix;
     Matrix projectionMatrix;
+    Matrix lightsViewProjectionMatrix;
     VertexBuffer vertexBuffer;
     Vector3 cameraPos;
     Texture2D streetTexture;
@@ -42,7 +43,9 @@ public class Game1 : Game
     Vector3 lightPos;
     float lightPower;
     float ambientPower;
-    
+    RenderTarget2D renderTarget;
+    Texture2D shadowMap;    
+
     public Game1()
     {
         graphics = new GraphicsDeviceManager(this);
@@ -87,6 +90,10 @@ public class Game1 : Game
         lamppostModel = LoadModel("Lampa", out lamppostTextures);
         lamppostTextures[0] = streetTexture;
         SetUpVertices();
+        
+        PresentationParameters pp = device.PresentationParameters;
+        renderTarget = new RenderTarget2D(device, pp.BackBufferWidth, pp.BackBufferHeight, true, device.DisplayMode.Format, DepthFormat.Depth24);
+
     }
 
     private void SetUpVertices()
@@ -131,9 +138,15 @@ public class Game1 : Game
     
     private void UpdateLightData()
     {
-        lightPos = new Vector3(-10, 4, -2);
-        lightPower = 1.0f;
         ambientPower = 0.2f;
+
+        lightPos = new Vector3(-18, 5, -2);
+        lightPower = 2.0f;
+
+        Matrix lightsView = Matrix.CreateLookAt(lightPos, new Vector3(-2, 3, -10), new Vector3(0, 1, 0));
+        Matrix lightsProjection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver2, 1f, 5f, 100f);
+
+        lightsViewProjectionMatrix = lightsView* lightsProjection;
     }
     
     protected override void Update(GameTime gameTime)
@@ -148,16 +161,43 @@ public class Game1 : Game
     
     protected override void Draw(GameTime gameTime)
     {
+        device.SetRenderTarget(renderTarget);
+        
         device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
+        DrawScene("ShadowMap");
+        
+        device.SetRenderTarget(null);
+        shadowMap = (Texture2D)renderTarget;
+ 
+        device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
+        DrawScene("ShadowedScene");
+        shadowMap = null;
+        
+        // device.SetRenderTarget(null);
+        // shadowMap = (Texture2D)renderTarget;
+        //
+        // device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkSlateBlue, 1.0f, 0);
+        // using (SpriteBatch sprite = new SpriteBatch(device))
+        // {
+        //     sprite.Begin();
+        //     sprite.Draw(shadowMap, new Vector2(0, 0), null, Color.White, 0, new Vector2(0, 0), 0.4f, SpriteEffects.None, 1);
+        //     sprite.End();
+        // }
 
-        effect.CurrentTechnique = effect.Techniques["Simplest"];
+        base.Draw(gameTime);
+    }
+
+    private void DrawScene(string technique)
+    {
+        effect.CurrentTechnique = effect.Techniques[technique];
         effect.Parameters["xWorldViewProjection"].SetValue(Matrix.Identity * viewMatrix * projectionMatrix);
         effect.Parameters["xTexture"].SetValue(streetTexture);
-
         effect.Parameters["xWorld"].SetValue(Matrix.Identity);
         effect.Parameters["xLightPos"].SetValue(lightPos);
         effect.Parameters["xLightPower"].SetValue(lightPower);
         effect.Parameters["xAmbient"].SetValue(ambientPower);
+        effect.Parameters["xLightsWorldViewProjection"].SetValue(Matrix.Identity * lightsViewProjectionMatrix);
+        effect.Parameters["xShadowMap"].SetValue(shadowMap);
         
         foreach (EffectPass pass in effect.CurrentTechnique.Passes)
         {
@@ -167,19 +207,17 @@ public class Game1 : Game
             device.DrawPrimitives(PrimitiveType.TriangleStrip, 0, 16);
         }
         Matrix car1Matrix = Matrix.CreateScale(4f) * Matrix.CreateRotationY(MathHelper.Pi) * Matrix.CreateTranslation(-3, 0, -15);
-        DrawModel(carModel, carTextures, car1Matrix, "Simplest");
+        DrawModel(carModel, carTextures, car1Matrix, technique);
  
         Matrix car2Matrix = Matrix.CreateScale(4f) * Matrix.CreateRotationY(MathHelper.Pi * 5.0f / 8.0f) * Matrix.CreateTranslation(-28, 0, -1.9f);
-        DrawModel(carModel, carTextures, car2Matrix, "Simplest");
+        DrawModel(carModel, carTextures, car2Matrix, technique);
         
-        Matrix lamp1Matric = Matrix.CreateScale(4f) * Matrix.CreateRotationY(MathHelper.Pi * 5.0f / 8.0f) * Matrix.CreateTranslation(-15, 0, 1.9f);
-        DrawModel(lamppostModel, lamppostTextures, lamp1Matric, "Simplest");
-        
-        base.Draw(gameTime);
+        Matrix lamp1Matric = Matrix.CreateScale(4f) * Matrix.CreateRotationY(MathHelper.Pi * 5.0f / 8.0f) * Matrix.CreateTranslation(-3, 0, 1.9f);
+        DrawModel(lamppostModel, lamppostTextures, lamp1Matric, technique);
     }
-    
+
     private void DrawModel(Model model, Texture2D[] textures, Matrix wMatrix, string technique)
-    {            
+    {
         Matrix[] modelTransforms = new Matrix[model.Bones.Count];
         model.CopyAbsoluteBoneTransformsTo(modelTransforms);
         int i = 0;
@@ -188,13 +226,15 @@ public class Game1 : Game
             foreach (Effect currentEffect in mesh.Effects)
             {
                 Matrix worldMatrix = modelTransforms[mesh.ParentBone.Index] * wMatrix;
-                currentEffect.CurrentTechnique = currentEffect.Techniques[technique];                                            
+                currentEffect.CurrentTechnique = currentEffect.Techniques[technique];
                 currentEffect.Parameters["xWorldViewProjection"].SetValue(worldMatrix * viewMatrix * projectionMatrix);
                 currentEffect.Parameters["xTexture"].SetValue(textures[i++]);
                 currentEffect.Parameters["xWorld"].SetValue(worldMatrix);
                 currentEffect.Parameters["xLightPos"].SetValue(lightPos);
                 currentEffect.Parameters["xLightPower"].SetValue(lightPower);
                 currentEffect.Parameters["xAmbient"].SetValue(ambientPower);
+                currentEffect.Parameters["xLightsWorldViewProjection"].SetValue(worldMatrix * lightsViewProjectionMatrix);
+                currentEffect.Parameters["xShadowMap"].SetValue(shadowMap);
             }
             mesh.Draw();
         }
